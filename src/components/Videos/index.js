@@ -86,7 +86,7 @@ const Videos = () => {
         const browseVideos = async () => {
             const config = {
                 method: 'GET',
-                url: 'http://api.tvmaze.com/schedule/web?date=2020-05-29&country=US',
+                url: 'http://api.tvmaze.com/schedule/web',
                 headers: { }
             };
             await axios(config)
@@ -99,11 +99,15 @@ const Videos = () => {
         };
 
         var thewireCONFIG = {
-            method: 'get',
-            url: 'https://funk-qa.jukinmedia.com/api/public/videos?offset=0&max=1&sort=latest&theWire=true&trending=false',
+            method: 'GET',
+            url: 'https://funk-qa.jukinmedia.com/api/public/videos',
+            crossdomain: true,
             headers: { 
-              'Cookie': '__cfduid=de936b862ad3c1272c6417211366859a21617951833'
-            }
+              'Access-Control-Allow-Origin': 'https://funk-qa.jukinmedia.com/',
+              'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type',
+              'Content-Type': 'multipart/form-data',
+            },
           };
           
         axios(thewireCONFIG)
@@ -129,9 +133,9 @@ const Videos = () => {
     };
 
     return (
-        <section className={classes.root} style={containerStyles}>
+        <section className={classes.root}>
             {videos?.map((video, i) => 
-                <div key={i} style={cardContainerStyle} className={classes.cardContainer}>
+                <div key={i} className={classes.cardContainer}>
                     <div>
                         <h3 className={classes.cardTitle}>
                             {video.name}
@@ -162,7 +166,7 @@ const Videos = () => {
                     <div className={classes.videoContainer}>
                         <div className={classes.videoOverlay} />
                         <ReactPlayer 
-                            url='https://www.youtube.com/watch?v=2B5rbsOoIUE' // Need to change URL from the API Request
+                            url={video.url} // Need to change URL from the API Request
                             width="100%"
                             height="100%"
                             controls={false}
