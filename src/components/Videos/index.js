@@ -98,6 +98,22 @@ const Videos = () => {
                 });
         };
 
+        var thewireCONFIG = {
+            method: 'get',
+            url: 'https://funk-qa.jukinmedia.com/api/public/videos?offset=0&max=1&sort=latest&theWire=true&trending=false',
+            headers: { 
+              'Cookie': '__cfduid=de936b862ad3c1272c6417211366859a21617951833'
+            }
+          };
+          
+        axios(thewireCONFIG)
+        .then(function (response) {
+            console.log(JSON.stringify(response.data));
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
         browseVideos()
     }, []);
 
