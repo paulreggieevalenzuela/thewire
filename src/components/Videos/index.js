@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
-import ReactPlayer from 'react-player/lazy'
-
-import AppContext from '../../context';
-
+import ReactPlayer from 'react-player/lazy';
+import moment from 'moment';
 import { makeStyles } from '@material-ui/core/styles';
+import CircularProgress from '@material-ui/core/CircularProgress';
+
+// Constants & Context
+import AppContext from '../../context';
+import { DATE_FORMAT } from '../../constants';
 
 const useGroupStyles = makeStyles((theme) => ({
     root: {
@@ -26,6 +29,7 @@ const useGroupStyles = makeStyles((theme) => ({
         [theme.breakpoints.up('md')]: {
             maxWidth: 'unset',
             flexDirection: 'row',
+            height: 400,
 
             '& > div': {
                 flex: 1,
@@ -39,7 +43,11 @@ const useGroupStyles = makeStyles((theme) => ({
         margin: '15px 0',
     },
     videoContainer: {
+        background: 'rgba(0,0,0,0.8)',
+        display: 'flex',
+        alignItems: 'center',
         position: 'relative',
+        overflow: 'hidden',
     },
     videoOverlay: {
         background: 'rgba(0,0,0,0.5)',
@@ -59,7 +67,7 @@ const useGroupStyles = makeStyles((theme) => ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 15,
 
         '&:last-child': {
             marginBottom: 40,
@@ -75,62 +83,70 @@ const useGroupStyles = makeStyles((theme) => ({
         fontSize: 16,
         margin: 0,
     },
+    spinner: {
+        display: 'flex',
+        justifyContent: 'center',
+    }
 }));
 
 const Videos = () => {
     const classes = useGroupStyles();
-    const [videos, setVideos] = useState([]);
-    const [grid] = useContext(AppContext);
 
-    useEffect(() => {
-        const browseVideos = async () => {
-            const config = {
-                method: 'GET',
-                url: 'http://api.tvmaze.com/schedule/web',
-                headers: { }
-            };
-            await axios(config)
-                .then((response) => {
-                    setVideos(response.data);
-                })
-                .catch((error) => {
-                    console.log(error);
-                });
+    const [videos, setVideos] = useState([]);
+    const [page, setPage] = useState(0);
+    const [isLoading, setLoading] = useState(false);
+
+    const [grid] = useContext(AppContext);
+    const loader = useRef(null);
+
+    const infiniteScrollOptions = {
+        root: null,
+        rootMargin: '100px',
+        threshold: 1.0
+    };
+
+    const params = {
+        offset: 0,
+        max: page <= 1 ? 12 : 1,
+        sort: 'latest',
+        theWire: true,
+        trending: false,
+    };
+
+    const browseVideos = async () => {
+        setLoading(true);
+        const config = {
+            method: 'GET',
+            url: '/api/public/videos',
+            params,
         };
 
-        var thewireCONFIG = {
-            method: 'GET',
-            url: 'https://funk-qa.jukinmedia.com/api/public/videos',
-            crossdomain: true,
-            headers: { 
-              'Access-Control-Allow-Origin': 'https://funk-qa.jukinmedia.com/',
-              'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type',
-              'Content-Type': 'multipart/form-data',
-            },
-          };
-          
-        axios(thewireCONFIG)
-        .then(function (response) {
-            console.log(JSON.stringify(response.data));
-        })
-        .catch(function (error) {
-            console.log(error);
-        });
+        await axios(config)
+            .then((resp) => {
+                setVideos([ ...videos, ...resp.data.result ]);
+                setLoading(false);
+            })
+            .catch((err) => {
+                setLoading(false);
+                console.log(err);
+            });
+    };
 
-        browseVideos()
+    const handleObserver = (entities) => {
+        const target = entities[0];
+        if (target.isIntersecting && !isLoading) {   
+            setPage((page) => page + 1)
+        }
+    }
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(handleObserver, infiniteScrollOptions);
+         if (loader.current) observer.observe(loader.current)
     }, []);
 
-    const containerStyles = {
-        display: 'flex',
-        flexDirection: grid.grid === 'list' ? 'column' : 'row',
-        flexWrap: grid.grid === 'list' ? 'no-wrap' : 'wrap',
-    };
-
-    const cardContainerStyle = {
-        flexDirection: grid.grid === 'list' ? 'row' : 'column-reverse',
-        width: grid.grid === 'list' ? '100%' : '33%',
-    };
+    useEffect(() => {
+        browseVideos();
+    }, [page])
 
     return (
         <section className={classes.root}>
@@ -138,42 +154,45 @@ const Videos = () => {
                 <div key={i} className={classes.cardContainer}>
                     <div>
                         <h3 className={classes.cardTitle}>
-                            {video.name}
+                            {video.title}
                         </h3>
                         <ul className={classes.videoDataList}>
                             <li className={classes.videoListItem}>
                                 <p className={classes.videListItemTitle}>Date Added:</p>
-                                <p className={classes.videoListItemDetail}>{video.airdate}</p>
+                                <p className={classes.videoListItemDetail}>{moment(video.signedDate).format(DATE_FORMAT)}</p>
                             </li>
                             <li className={classes.videoListItem}>
                                 <p className={classes.videListItemTitle}>Date Posted:</p>
-                                <p className={classes.videoListItemDetail}>{video.airdate}</p>
+                                <p className={classes.videoListItemDetail}>{moment(video.when).format(DATE_FORMAT)}</p>
                             </li>
                             <li className={classes.videoListItem}>
                                 <p className={classes.videListItemTitle}>Views:</p>
-                                <p className={classes.videoListItemDetail}>{video.number}</p>
+                                <p className={classes.videoListItemDetail}>{video.views}</p>
                             </li>
                             <li className={classes.videoListItem}>
                                 <p className={classes.videListItemTitle}>Location:</p>
-                                <p className={classes.videoListItemDetail}>N/A</p>
+                                <p className={classes.videoListItemDetail}>{video.location}</p>
                             </li>
                             <li className={classes.videoListItem}>
                                 <p className={classes.videListItemTitle}>JV#:</p>
-                                <p className={classes.videoListItemDetail}>{video.id}</p>
+                                <p className={classes.videoListItemDetail}>{video.jmId}</p>
                             </li>
                         </ul>
                     </div>
                     <div className={classes.videoContainer}>
-                        <div className={classes.videoOverlay} />
                         <ReactPlayer 
-                            url={video.url} // Need to change URL from the API Request
+                            url={video.videoUrl}
                             width="100%"
-                            height="100%"
-                            controls={false}
+                            height="auto"
                         />
                     </div>
                 </div>
             )}
+            <div className={classes.spinner} ref={loader}>
+                {isLoading && (
+                    <CircularProgress />
+                )}
+            </div>
         </section>
     );
 }
